@@ -271,6 +271,11 @@ module GenHashTable = struct
         h.size <- h.size + 1;
         if h.size > Array.length h.data lsl 1 then resize h
 
+    let update h key f =
+      match f (find_opt h key) with
+      | None -> remove h key
+      | Some info -> replace h key info
+
     let mem h key =
       let hkey = H.hash h.seed key in
       let rec mem_in_bucket = function
