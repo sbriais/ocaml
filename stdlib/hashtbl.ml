@@ -250,6 +250,36 @@ let replace h key data =
     if h.size > Array.length h.data lsl 1 then resize key_index h
   end
 
+let rec update_bucket h i key prec f = function
+  | Empty ->
+      begin match f None with
+      | None -> (* nothing to remove *) ()
+      | Some data ->
+          (* add extra binding *)
+          h.data.(i) <- Cons{key; data; next=h.data.(i)};
+          h.size <- h.size + 1;
+          if h.size > Array.length h.data lsl 1 then resize key_index h
+      end
+  | (Cons ({key=k; data=d; next} as slot)) as c ->
+      if compare k key = 0
+      then begin
+        match f (Some d) with
+        | None ->
+            (* remove current binding *)
+            h.size <- h.size - 1;
+            begin match prec with
+            | Empty -> h.data.(i) <- next
+            | Cons c -> c.next <- next
+            end
+        | Some data ->
+            (* replace current binding *)
+            slot.key <- key; slot.data <- data
+      end else update_bucket h i key c f next
+
+let update h key f =
+  let i = key_index h key in
+  update_bucket h i key Empty f h.data.(i)
+
 let mem h key =
   let rec mem_in_bucket = function
   | Empty ->
@@ -416,6 +446,7 @@ module type S =
     val find_opt: 'a t -> key -> 'a option
     val find_all: 'a t -> key -> 'a list
     val replace : 'a t -> key -> 'a -> unit
+    val update: 'a t -> key -> ('a option -> 'a option) -> unit
     val mem : 'a t -> key -> bool
     val iter: (key -> 'a -> unit) -> 'a t -> unit
     val filter_map_inplace: (key -> 'a -> 'a option) -> 'a t -> unit
@@ -444,6 +475,7 @@ module type SeededS =
     val find_opt: 'a t -> key -> 'a option
     val find_all : 'a t -> key -> 'a list
     val replace : 'a t -> key -> 'a -> unit
+    val update: 'a t -> key -> ('a option -> 'a option) -> unit
     val mem : 'a t -> key -> bool
     val iter : (key -> 'a -> unit) -> 'a t -> unit
     val filter_map_inplace: (key -> 'a -> 'a option) -> 'a t -> unit
@@ -561,6 +593,36 @@ module MakeSeeded(H: SeededHashedType): (SeededS with type key = H.t) =
         h.size <- h.size + 1;
         if h.size > Array.length h.data lsl 1 then resize key_index h
       end
+
+    let rec update_bucket h i key prec f = function
+      | Empty ->
+          begin match f None with
+          | None -> (* nothing to remove *) ()
+          | Some data ->
+              (* add extra binding *)
+              h.data.(i) <- Cons{key; data; next=h.data.(i)};
+              h.size <- h.size + 1;
+              if h.size > Array.length h.data lsl 1 then resize key_index h
+          end
+      | (Cons ({key=k; data=d; next} as slot)) as c ->
+          if H.equal k key
+          then begin
+            match f (Some d) with
+            | None ->
+                (* remove current binding *)
+                h.size <- h.size - 1;
+                begin match prec with
+                | Empty -> h.data.(i) <- next
+                | Cons c -> c.next <- next
+                end
+            | Some data ->
+                (* replace current binding *)
+                slot.key <- key; slot.data <- data
+          end else update_bucket h i key c f next
+
+    let update h key f =
+      let i = key_index h key in
+      update_bucket h i key Empty f h.data.(i)
 
     let mem h key =
       let rec mem_in_bucket = function

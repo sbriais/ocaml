@@ -113,6 +113,18 @@ val replace : ('a, 'b) t -> 'a -> 'b -> unit
    This is functionally equivalent to {!Hashtbl.remove}[ tbl x]
    followed by {!Hashtbl.add}[ tbl x y]. *)
 
+val update: ('a, 'b) t -> 'a -> ('b option -> 'b option) -> unit
+(** [Hashtbl.update tbl x f] modifies the current binding of [x] in
+    [tbl] depending on the value of [y] where [y] is [f (find_opt tbl
+    x)].  If [y] is [None] then the current binding of [x] in [tbl] is
+    removed, restoring the previous binding if it exists and does
+    nothing if [x] is not bound in [tbl]; otherwise, if [y] is [Some
+    z] then it replaces the current binding of [x] in [tbl] by a
+    binding of [x] to [z]. If [x] is unbound in [tbl], a binding of
+    [x] to [z] is added to [tbl] instead.
+    @since 4.10.0
+*)
+
 val iter : ('a -> 'b -> unit) -> ('a, 'b) t -> unit
 (** [Hashtbl.iter f tbl] applies [f] to all bindings in table [tbl].
    [f] receives the key as first argument, and the associated value
@@ -324,6 +336,7 @@ module type S =
 
     val find_all : 'a t -> key -> 'a list
     val replace : 'a t -> key -> 'a -> unit
+    val update: 'a t -> key -> ('a option -> 'a option) -> unit
     val mem : 'a t -> key -> bool
     val iter : (key -> 'a -> unit) -> 'a t -> unit
     val filter_map_inplace: (key -> 'a -> 'a option) -> 'a t -> unit
@@ -398,6 +411,7 @@ module type SeededS =
 
     val find_all : 'a t -> key -> 'a list
     val replace : 'a t -> key -> 'a -> unit
+    val update: 'a t -> key -> ('a option -> 'a option) -> unit
     val mem : 'a t -> key -> bool
     val iter : (key -> 'a -> unit) -> 'a t -> unit
     val filter_map_inplace: (key -> 'a -> 'a option) -> 'a t -> unit
